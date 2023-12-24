@@ -115,7 +115,7 @@ def delete_db_records():
 def main():
     """ Main entry point of the app """
     setup_database()
-    add_spurgeon_sermons()
+    get_spurgeon_sermons()
 
 if __name__ == "__main__":
     """ This is executed when run from the command line """
