@@ -36,29 +36,42 @@ def add_sermon(title, author, link, text):
     elif not text:
         print("No sermon text given")
         exit()
-    # ensure no bad sql characters will get in
 
-    # add author, title, link to db
     connection = sqlite3.connect(database_path)
     cursor = connection.cursor()
     result = cursor.execute("SELECT link FROM sermons WHERE author=:author AND title=:title", ({"author": author, "title": title}))
     if len(result.fetchall()) > 0:
         print(title + " by " + author + " already in database")
-        exit()
-    cursor.execute("INSERT into sermons VALUES(:author, :title, :link)", ({"author": author, "title": title, "link": link}))
+        return
+    cursor.execute("INSERT into sermons VALUES(:author, :title, :link)",
+                   ({"author": author, "title": title, "link": link}))
     connection.commit()
-    # save text in file using author, title, text
-    file_name_title = title.replace(" ","").lower()
-    dir_name_author = author.replace(" ","").lower()
+
+    file_name_title = clean_file_name(title)
+    dir_name_author = clean_file_name(author)
+    # remove dash from the front if present
     sermon_path = sermons_path + dir_name_author + "/" + file_name_title + ".txt"
     if not os.path.exists(sermons_path + dir_name_author):
         os.makedirs(sermons_path + dir_name_author)
     if os.path.isfile(sermon_path):
         print(title + " by " + author + " already saved in files")
-        exit()
+        return
     sermon_file = open(sermon_path, "w+")
     sermon_file.write(text)
     sermon_file.close()
+    
+def clean_file_name(file_name):
+    new_file_name = ""
+    for char in file_name:
+        if char.isalnum():
+            new_file_name += char.lower()
+        if char.isspace():
+            new_file_name += '-' # replace spaces with dashes
+    # replace multiple dashes with one dash
+    new_file_name = re.sub('-+', '-', new_file_name)
+    if new_file_name[0] == '-':
+        new_file_name = new_file_name[1:]
+    return new_file_name
 
 def get_spurgeon_sermons():
     browser = mechanicalsoup.StatefulBrowser()
