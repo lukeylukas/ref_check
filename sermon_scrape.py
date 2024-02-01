@@ -14,13 +14,10 @@ time_between_calls = 0.03
 
 def setup_database():
     connection = sqlite3.connect(database_path)
-    cursor = connection.cursor()
-    result = cursor.execute("SELECT name from sqlite_master")
-    table_names = result.fetchall()
-    if len(table_names) == 0 or table_names[0][0] != 'sermons':
-        cursor.execute("CREATE table sermons(author, title, link)")
-        connection.commit()
-        print("Created the sermons table with author, title and link columns")
+    with connection:
+        connection.execute("CREATE TABLE IF NOT EXISTS sermons(author, title, link)")
+        connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS sermon_index ON sermons(author, title, link)")
+    connection.close()
 
 def add_sermon(title, author, link, text):
     # test this function by posting fake data. 
@@ -38,14 +35,13 @@ def add_sermon(title, author, link, text):
         exit()
 
     connection = sqlite3.connect(database_path)
-    cursor = connection.cursor()
-    result = cursor.execute("SELECT link FROM sermons WHERE author=:author AND title=:title", ({"author": author, "title": title}))
-    if len(result.fetchall()) > 0:
-        print(title + " by " + author + " already in database")
-        return
-    cursor.execute("INSERT into sermons VALUES(:author, :title, :link)",
-                   ({"author": author, "title": title, "link": link}))
-    connection.commit()
+    try:
+        with connection:
+            connection.execute("INSERT into sermons VALUES(:author, :title, :link)",
+                               ({"author": author, "title": title, "link": link}))
+    except sqlite3.IntegrityError:
+        print(title + " by " + author + " probably already in database")
+    connection.close()
 
     file_name_title = clean_file_name(title)
     dir_name_author = clean_file_name(author)
@@ -112,11 +108,12 @@ def rm_leading_spaces(text):
 
 def check_db():
     connection = sqlite3.connect(database_path)
-    cursor = connection.cursor()
-    result = cursor.execute("SELECT COUNT(*) FROM sermons")
-    print(result.fetchall())
-    result = cursor.execute("SELECT TOP 10 * FROM sermons")
-    print(result.fetchall())
+    with connection:
+        result = connection.execute("SELECT COUNT(*) FROM sermons")
+        print(result.fetchall())
+        result = connection.execute("SELECT TOP 10 * FROM sermons")
+        print(result.fetchall())
+    connection.close()
     
 ####################################################
 def main(args):
